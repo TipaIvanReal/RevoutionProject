@@ -1,0 +1,13 @@
+ModificationType: Patch
+Name: Controlbar HD 
+Version: 3.05 Controlbar HD
+SimpleDownloadLink: https://gen.insave.ovh/revolutionproject/0RControlbarHD.big
+DiscordLink: ''
+ModDBLink: ''
+NewsLink: https://www.moddb.com/games/cc-generals-zero-hour/addons/control-bar-pro-zero-hour-hd-control-bar-pro-generals-hd
+DependenceName: Revolution Project
+S3HostLink: gen.insave.ovh:9000
+S3BucketName: ''
+S3FolderName: ''
+S3HostPublicKey: ''
+S3HostSecretKey: ''
