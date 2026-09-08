@@ -1,0 +1,17 @@
+ModificationType: Executable
+Name: Revolution Standalone Engine
+Version: 0.1 Baseline
+SimpleDownloadLink: https://github.com/TipaIvanReal/TipaIvanReal1/releases/download/revolution-standalone-latest/RevolutionProject-generalszh.zip
+UIImageSourceLink: ''
+DiscordLink: ''
+ModDBLink: ''
+NewsLink: ''
+DependenceName: Revolution Project
+S3HostLink: ''
+S3BucketName: ''
+S3FolderName: ''
+S3HostPublicKey: ''
+S3HostSecretKey: ''
+ExecutableFileName: generalszh.exe
+ReplacesOriginalGameFile: true
+ReplacesOriginalWBFile: false
