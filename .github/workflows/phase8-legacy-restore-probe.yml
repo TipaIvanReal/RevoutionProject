@@ -1,0 +1,32 @@
+name: Phase 8 Legacy Restore Probe
+
+on:
+  push:
+    branches:
+      - phase8-render-gate
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86, x64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile ${{ matrix.arch }} probe
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvarsall.bat"
+          New-Item -ItemType Directory -Force -Path ci\out | Out-Null
+          cmd /d /s /c "`"$vcvars`" ${{ matrix.arch }} && cl /nologo /std:c++17 /EHsc /O2 ci\phase8_legacy_restore_probe.cpp /Fe:ci\out\legacy_probe_${{ matrix.arch }}.exe /link d3d9.lib d3dcompiler.lib user32.lib"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run ${{ matrix.arch }} probe
+        shell: pwsh
+        run: |
+          & ".\ci\out\legacy_probe_${{ matrix.arch }}.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
