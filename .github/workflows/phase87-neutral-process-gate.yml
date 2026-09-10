@@ -1,0 +1,29 @@
+name: Phase 8.7 Exact Neutral Process Gate
+
+on:
+  push:
+    branches:
+      - phase8-native-terrain-gate
+  workflow_dispatch:
+
+jobs:
+  neutral-process-x86:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact x86 neutral-process gate
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw "Visual Studio C++ toolchain not found" }
+          $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvarsall.bat"
+          New-Item -ItemType Directory -Force -Path ci\out | Out-Null
+          cmd /d /s /c "`"$vcvars`" x86 && clang --target=i686-pc-windows-msvc -c ci\phase87_neutral_process_helpers.s -o ci\out\phase87_neutral_process_helpers.obj && clang --target=i686-pc-windows-msvc -c ci\phase87_neutral_call_wrappers.s -o ci\out\phase87_neutral_call_wrappers.obj && cl /nologo /std:c++17 /EHsc /W4 /O2 ci\phase87_neutral_process_gate.cpp ci\out\phase87_neutral_process_helpers.obj ci\out\phase87_neutral_call_wrappers.obj /Fe:ci\out\phase87_neutral_process_gate_x86.exe /link /BASE:0x00400000 /DYNAMICBASE:NO /FIXED /SECTION:.p8bss,RW d3d9.lib user32.lib"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run exact x86 neutral-process gate
+        shell: pwsh
+        run: |
+          & ".\ci\out\phase87_neutral_process_gate_x86.exe" 2>&1 | Tee-Object -FilePath "ci\out\phase87_neutral_process_gate_x86.log"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
