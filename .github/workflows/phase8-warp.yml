@@ -16,6 +16,9 @@ jobs:
         working-directory: phase8-testbed/windows_harness
     steps:
       - uses: actions/checkout@v4
+      - name: Apply documented 9On12 catch-all override fix
+        shell: powershell
+        run: python .\fix_9on12_override.py
       - name: Build MSVC x64 harness
         shell: powershell
         run: |
@@ -25,7 +28,7 @@ jobs:
           $devcmd = Join-Path $vs 'Common7\Tools\VsDevCmd.bat'
           cmd /c "`"$devcmd`" -arch=x64 -host_arch=x64 && cl /nologo /std:c++17 /EHsc /O2 phase8_warp_harness.cpp /Fe:phase8_warp_harness.exe /link d3d9.lib d3d12.lib dxgi.lib d3dcompiler.lib user32.lib"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Run D3D9On12 over D3D12 WARP
+      - name: Run functional D3D9On12 terrain gate
         shell: powershell
         run: |
           .\phase8_warp_harness.exe
