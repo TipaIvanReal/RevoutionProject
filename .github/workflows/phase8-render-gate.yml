@@ -1,0 +1,36 @@
+name: Phase 8 D3D9On12 Render Gate
+
+on:
+  push:
+    branches:
+      - phase8-render-gate
+  workflow_dispatch:
+
+jobs:
+  state-restore:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86, x64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compile ${{ matrix.arch }} gate
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw "Visual Studio C++ toolchain not found" }
+          $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvarsall.bat"
+          New-Item -ItemType Directory -Force -Path ci\out | Out-Null
+          cmd /d /s /c "`"$vcvars`" ${{ matrix.arch }} && cl /nologo /std:c++17 /EHsc /W4 /O2 ci\phase8_state_restore_gate.cpp /Fe:ci\out\phase8_gate_${{ matrix.arch }}.exe /link d3d9.lib d3dcompiler.lib user32.lib"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run ${{ matrix.arch }} D3D9On12 gate
+        shell: pwsh
+        run: |
+          & ".\ci\out\phase8_gate_${{ matrix.arch }}.exe" 2>&1 | Tee-Object -FilePath "ci\out\phase8_gate_${{ matrix.arch }}.log"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
