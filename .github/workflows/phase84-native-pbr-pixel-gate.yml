@@ -1,0 +1,36 @@
+name: Phase 8.4 Native D3D9 PBR Pixel Gate
+
+on:
+  push:
+    branches:
+      - phase8-native-terrain-gate
+  workflow_dispatch:
+
+jobs:
+  native-pbr-pixel:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86, x64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compile ${{ matrix.arch }} native pixel gate
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw "Visual Studio C++ toolchain not found" }
+          $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvarsall.bat"
+          New-Item -ItemType Directory -Force -Path ci\out | Out-Null
+          cmd /d /s /c "`"$vcvars`" ${{ matrix.arch }} && cl /nologo /std:c++17 /EHsc /W4 /O2 ci\phase84_native_pbr_pixel_gate.cpp /Fe:ci\out\phase84_native_pbr_${{ matrix.arch }}.exe /link d3d9.lib d3dcompiler.lib user32.lib"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run ${{ matrix.arch }} native D3D9 PBR pixel gate
+        shell: pwsh
+        run: |
+          & ".\ci\out\phase84_native_pbr_${{ matrix.arch }}.exe" 2>&1 | Tee-Object -FilePath "ci\out\phase84_native_pbr_${{ matrix.arch }}.log"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
