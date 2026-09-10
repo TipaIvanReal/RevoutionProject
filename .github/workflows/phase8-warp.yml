@@ -1,0 +1,41 @@
+name: Phase 8 D3D9On12 WARP gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'phase8-testbed/**'
+      - '.github/workflows/phase8-warp.yml'
+
+jobs:
+  warp:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: phase8-testbed/windows_harness
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build MSVC x64 harness
+        shell: powershell
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw "Visual Studio C++ toolchain not found" }
+          $devcmd = Join-Path $vs 'Common7\Tools\VsDevCmd.bat'
+          cmd /c "`"$devcmd`" -arch=x64 -host_arch=x64 && cl /nologo /std:c++17 /EHsc /O2 phase8_warp_harness.cpp /Fe:phase8_warp_harness.exe /link d3d9.lib d3d12.lib dxgi.lib d3dcompiler.lib user32.lib"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run D3D9On12 over D3D12 WARP
+        shell: powershell
+        run: |
+          .\phase8_warp_harness.exe
+          if ($LASTEXITCODE -ne 0) { if (Test-Path phase8_warp_report.json) { Get-Content phase8_warp_report.json }; exit $LASTEXITCODE }
+          Get-Content phase8_warp_report.json
+      - name: Upload WARP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase8-warp-report
+          path: |
+            phase8-testbed/windows_harness/phase8_warp_report.json
+            phase8-testbed/windows_harness/phase8_warp_output.bmp
