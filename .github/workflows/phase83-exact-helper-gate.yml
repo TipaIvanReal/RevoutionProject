@@ -28,6 +28,7 @@ jobs:
           $fixed += 'extern "C" void __cdecl restore83_c(void*);'
           $fixed += 'static int call_capture(void* p){ return capture83_c(p); }'
           $fixed += 'static void call_restore(void* p){ restore83_c(p); }'
+          $fixed += '#pragma section(".p8bss",read,write)'
           $fixed += '__declspec(allocate(".p8bss")) volatile unsigned char gP8LowImageMap[0x700000] = {};'
           $fixed += $lines[11..($lines.Count-1)]
           $fixedText = $fixed -join "`r`n"
