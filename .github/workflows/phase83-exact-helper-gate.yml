@@ -28,15 +28,19 @@ jobs:
           $fixed += 'extern "C" void __cdecl restore83_c(void*);'
           $fixed += 'static int call_capture(void* p){ return capture83_c(p); }'
           $fixed += 'static void call_restore(void* p){ restore83_c(p); }'
+          $fixed += '__declspec(allocate(".p8bss")) volatile unsigned char gP8LowImageMap[0x700000] = {};'
           $fixed += $lines[11..($lines.Count-1)]
           $fixedText = $fixed -join "`r`n"
-          $fixedText = $fixedText.Replace('VirtualAlloc((void*)0x00AEC000,0x1000', 'VirtualAlloc((void*)0x00AE0000,0x10000')
-          $fixedText = $fixedText.Replace('low!=(void*)0x00AEC000', 'low!=(void*)0x00AE0000')
+          $oldAlloc = 'void* low=VirtualAlloc((void*)0x00AEC000,0x1000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);if(low!=(void*)0x00AEC000){std::printf("VirtualAlloc low globals failed %p err=%lu\n",low,GetLastError());return 2;}'
+          $newAlloc = 'gP8LowImageMap[0]=0; gP8LowImageMap[sizeof(gP8LowImageMap)-1]=0; void* low=(void*)0x00400000; MEMORY_BASIC_INFORMATION mbi={}; if(!VirtualQuery((void*)0x00AEC004,&mbi,sizeof(mbi)) || mbi.State!=MEM_COMMIT || !(mbi.Protect&(PAGE_READWRITE|PAGE_EXECUTE_READWRITE|PAGE_WRITECOPY|PAGE_EXECUTE_WRITECOPY))){std::printf("0xAEC004 not writable in test image base=%p state=0x%lx protect=0x%lx alloc=%p\n",GetModuleHandleW(nullptr),(unsigned long)mbi.State,(unsigned long)mbi.Protect,mbi.AllocationBase);return 2;} std::printf("test_image_base=%p exact_globals_mapped=true\n",GetModuleHandleW(nullptr));'
+          $fixedText = $fixedText.Replace($oldAlloc, $newAlloc)
+          $fixedText = $fixedText.Replace('VirtualFree(low,0,MEM_RELEASE);', '(void)low;')
           Set-Content ci\out\phase83_helper_gate_fixed.cpp -Value $fixedText -Encoding utf8
-          Select-String -Path ci\out\phase83_helper_gate_fixed.cpp -Pattern 'VirtualAlloc' | ForEach-Object { $_.Line }
+          Select-String -Path ci\out\phase83_helper_gate_fixed.cpp -Pattern 'gP8LowImageMap|exact_globals_mapped' | ForEach-Object { $_.Line }
 
-          cmd /d /s /c "`"$vcvars`" x86 && clang --target=i686-pc-windows-msvc -c ci\phase83_helpers.s -o ci\out\phase83_helpers.obj && clang --target=i686-pc-windows-msvc -c ci\phase83_call_wrappers.s -o ci\out\phase83_call_wrappers.obj && cl /nologo /std:c++17 /EHsc /O2 ci\out\phase83_helper_gate_fixed.cpp ci\out\phase83_helpers.obj ci\out\phase83_call_wrappers.obj /Fe:ci\out\phase83_helper_gate_x86.exe /link /BASE:0x02000000 /DYNAMICBASE:NO /FIXED d3d9.lib d3dcompiler.lib user32.lib"
+          cmd /d /s /c "`"$vcvars`" x86 && clang --target=i686-pc-windows-msvc -c ci\phase83_helpers.s -o ci\out\phase83_helpers.obj && clang --target=i686-pc-windows-msvc -c ci\phase83_call_wrappers.s -o ci\out\phase83_call_wrappers.obj && cl /nologo /std:c++17 /EHsc /O2 ci\out\phase83_helper_gate_fixed.cpp ci\out\phase83_helpers.obj ci\out\phase83_call_wrappers.obj /Fe:ci\out\phase83_helper_gate_x86.exe /link /BASE:0x00400000 /DYNAMICBASE:NO /FIXED /SECTION:.p8bss,RW d3d9.lib d3dcompiler.lib user32.lib"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dumpbin /headers ci\out\phase83_helper_gate_x86.exe | Select-String -Pattern 'image base|size of image|p8bss'
       - name: Run exact x86 helper gate
         shell: pwsh
         run: |
