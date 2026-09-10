@@ -37,11 +37,9 @@ jobs:
           $fixedText = $fixedText.Replace($oldAlloc, $newAlloc)
           $fixedText = $fixedText.Replace('VirtualFree(low,0,MEM_RELEASE);', '(void)low;')
           Set-Content ci\out\phase83_helper_gate_fixed.cpp -Value $fixedText -Encoding utf8
-          Select-String -Path ci\out\phase83_helper_gate_fixed.cpp -Pattern 'gP8LowImageMap|exact_globals_mapped' | ForEach-Object { $_.Line }
 
           cmd /d /s /c "`"$vcvars`" x86 && clang --target=i686-pc-windows-msvc -c ci\phase83_helpers.s -o ci\out\phase83_helpers.obj && clang --target=i686-pc-windows-msvc -c ci\phase83_call_wrappers.s -o ci\out\phase83_call_wrappers.obj && cl /nologo /std:c++17 /EHsc /O2 ci\out\phase83_helper_gate_fixed.cpp ci\out\phase83_helpers.obj ci\out\phase83_call_wrappers.obj /Fe:ci\out\phase83_helper_gate_x86.exe /link /BASE:0x00400000 /DYNAMICBASE:NO /FIXED /SECTION:.p8bss,RW d3d9.lib d3dcompiler.lib user32.lib"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dumpbin /headers ci\out\phase83_helper_gate_x86.exe | Select-String -Pattern 'image base|size of image|p8bss'
       - name: Run exact x86 helper gate
         shell: pwsh
         run: |
