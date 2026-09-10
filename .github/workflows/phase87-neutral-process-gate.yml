@@ -20,7 +20,7 @@ jobs:
           if (-not $vs) { throw "Visual Studio C++ toolchain not found" }
           $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvarsall.bat"
           New-Item -ItemType Directory -Force -Path ci\out | Out-Null
-          cmd /d /s /c "`"$vcvars`" x86 && clang --target=i686-pc-windows-msvc -c ci\phase87_neutral_process_helpers.s -o ci\out\phase87_neutral_process_helpers.obj && clang --target=i686-pc-windows-msvc -c ci\phase87_neutral_call_wrappers.s -o ci\out\phase87_neutral_call_wrappers.obj && cl /nologo /std:c++17 /EHsc /W4 /O2 ci\phase87_neutral_process_gate.cpp ci\out\phase87_neutral_process_helpers.obj ci\out\phase87_neutral_call_wrappers.obj /Fe:ci\out\phase87_neutral_process_gate_x86.exe /link /BASE:0x00400000 /DYNAMICBASE:NO /FIXED /SECTION:.p8bss,RW d3d9.lib user32.lib"
+          cmd /d /s /c "`"$vcvars`" x86 && clang --target=i686-pc-windows-msvc -c ci\phase87_neutral_process_helpers.s -o ci\out\phase87_neutral_process_helpers.obj && clang --target=i686-pc-windows-msvc -c ci\phase87_neutral_call_wrappers.s -o ci\out\phase87_neutral_call_wrappers.obj && cl /nologo /std:c++17 /EHsc /W4 /O2 ci\phase87_neutral_process_gate.cpp ci\out\phase87_neutral_process_helpers.obj ci\out\phase87_neutral_call_wrappers.obj /Fe:ci\out\phase87_neutral_process_gate_x86.exe /link /BASE:0x00400000 /DYNAMICBASE:NO /FIXED /SECTION:.p8bss,RW d3d9.lib dxguid.lib user32.lib"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run exact x86 neutral-process gate
         shell: pwsh
