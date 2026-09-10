@@ -1,0 +1,29 @@
+name: Phase 8.3 Exact Helper Gate
+
+on:
+  push:
+    branches:
+      - phase8-render-gate
+  workflow_dispatch:
+
+jobs:
+  exact-helper-x86:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact x86 helper gate
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw "Visual Studio C++ toolchain not found" }
+          $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvarsall.bat"
+          New-Item -ItemType Directory -Force -Path ci\out | Out-Null
+          cmd /d /s /c "`"$vcvars`" x86 && clang --target=i686-pc-windows-msvc -c ci\phase83_helpers.s -o ci\out\phase83_helpers.obj && cl /nologo /std:c++17 /EHsc /O2 ci\phase83_helper_gate.cpp ci\out\phase83_helpers.obj /Fe:ci\out\phase83_helper_gate_x86.exe /link d3d9.lib d3dcompiler.lib user32.lib"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run exact x86 helper gate
+        shell: pwsh
+        run: |
+          & ".\ci\out\phase83_helper_gate_x86.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
