@@ -20,7 +20,18 @@ jobs:
           if (-not $vs) { throw "Visual Studio C++ toolchain not found" }
           $vcvars = Join-Path $vs "VC\Auxiliary\Build\vcvarsall.bat"
           New-Item -ItemType Directory -Force -Path ci\out | Out-Null
-          cmd /d /s /c "`"$vcvars`" x86 && clang --target=i686-pc-windows-msvc -c ci\phase83_helpers.s -o ci\out\phase83_helpers.obj && clang-cl /nologo /std:c++17 /EHsc /O2 /arch:IA32 ci\phase83_helper_gate.cpp ci\out\phase83_helpers.obj /Fe:ci\out\phase83_helper_gate_x86.exe /link d3d9.lib d3dcompiler.lib user32.lib"
+
+          $lines = Get-Content ci\phase83_helper_gate.cpp
+          $fixed = @()
+          $fixed += $lines[0..6]
+          $fixed += 'extern "C" int __cdecl capture83_c(void*);'
+          $fixed += 'extern "C" void __cdecl restore83_c(void*);'
+          $fixed += 'static int call_capture(void* p){ return capture83_c(p); }'
+          $fixed += 'static void call_restore(void* p){ restore83_c(p); }'
+          $fixed += $lines[11..($lines.Count-1)]
+          $fixed | Set-Content ci\out\phase83_helper_gate_fixed.cpp -Encoding utf8
+
+          cmd /d /s /c "`"$vcvars`" x86 && clang --target=i686-pc-windows-msvc -c ci\phase83_helpers.s -o ci\out\phase83_helpers.obj && clang --target=i686-pc-windows-msvc -c ci\phase83_call_wrappers.s -o ci\out\phase83_call_wrappers.obj && cl /nologo /std:c++17 /EHsc /O2 ci\out\phase83_helper_gate_fixed.cpp ci\out\phase83_helpers.obj ci\out\phase83_call_wrappers.obj /Fe:ci\out\phase83_helper_gate_x86.exe /link d3d9.lib d3dcompiler.lib user32.lib"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run exact x86 helper gate
         shell: pwsh
