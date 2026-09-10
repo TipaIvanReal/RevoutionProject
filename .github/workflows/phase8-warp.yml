@@ -1,4 +1,4 @@
-name: Phase 8 D3D9On12 WARP gate
+name: Phase 8 D3D9On12 terrain gate
 
 on:
   workflow_dispatch:
@@ -8,37 +8,40 @@ on:
       - '.github/workflows/phase8-warp.yml'
 
 jobs:
-  warp:
+  d3d9on12:
     runs-on: windows-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86, x64]
     defaults:
       run:
         working-directory: phase8-testbed/windows_harness
     steps:
       - uses: actions/checkout@v4
-      - name: Apply documented 9On12 catch-all override fix
-        shell: powershell
-        run: python .\fix_9on12_override.py
-      - name: Build MSVC x64 harness
+      - name: Build MSVC ${{ matrix.arch }} harness
         shell: powershell
         run: |
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if (-not $vs) { throw "Visual Studio C++ toolchain not found" }
           $devcmd = Join-Path $vs 'Common7\Tools\VsDevCmd.bat'
-          cmd /c "`"$devcmd`" -arch=x64 -host_arch=x64 && cl /nologo /std:c++17 /EHsc /O2 phase8_warp_harness.cpp /Fe:phase8_warp_harness.exe /link d3d9.lib d3d12.lib dxgi.lib d3dcompiler.lib user32.lib"
+          $arch = '${{ matrix.arch }}'
+          cmd /c "`"$devcmd`" -arch=$arch -host_arch=x64 && cl /nologo /std:c++17 /EHsc /O2 phase8_d3d9on12_gate.cpp /Fe:phase8_d3d9on12_gate.exe /link d3d9.lib d3d12.lib dxgi.lib d3dcompiler.lib user32.lib"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Run functional D3D9On12 terrain gate
+      - name: Run D3D9On12 terrain shader and state gate
         shell: powershell
         run: |
-          .\phase8_warp_harness.exe
-          if ($LASTEXITCODE -ne 0) { if (Test-Path phase8_warp_report.json) { Get-Content phase8_warp_report.json }; exit $LASTEXITCODE }
-          Get-Content phase8_warp_report.json
-      - name: Upload WARP report
+          .\phase8_d3d9on12_gate.exe
+          $code = $LASTEXITCODE
+          if (Test-Path phase8_d3d9on12_report.json) { Get-Content phase8_d3d9on12_report.json }
+          if ($code -ne 0) { exit $code }
+      - name: Upload gate report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: phase8-warp-report
+          name: phase8-d3d9on12-${{ matrix.arch }}
           path: |
-            phase8-testbed/windows_harness/phase8_warp_report.json
-            phase8-testbed/windows_harness/phase8_warp_output.bmp
+            phase8-testbed/windows_harness/phase8_d3d9on12_report.json
+            phase8-testbed/windows_harness/phase8_d3d9on12_output.bmp
